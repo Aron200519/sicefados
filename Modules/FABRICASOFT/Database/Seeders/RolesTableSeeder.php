@@ -21,19 +21,5 @@ class RolesTableSeeder extends Seeder
             'app_id' => $app->id,
         ]);
 
-        $useradministrador = User::where('nickname', 'Deimar')->firstOrFail();
-        $useradministrador->roles()->syncWithoutDetaching([$roleadmin->id]);
-
-        $roleintern = Role::updateOrCreate(['slug' => 'fabricasoft.apprentices'], [
-            'name' => 'Aprendiz',
-            'description' => 'Rol aprendiz de la aplicación FABRICASOFT',
-            'description_english' => 'Apprentice role of the FABRICASOFT application',
-            'full_access' => 'No',
-            'app_id' => $app->id,
-        ]);
-
-        $userintern = User::where('nickname', 'Deimar')->firstOrFail();
-
-        $userintern->roles()->syncWithoutDetaching([$roleintern->id]);
     }
 }

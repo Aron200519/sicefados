@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="{{ asset('AdminLTE/dist/css/adminlte.min.css') }}">
     <!-- overlayScrollbars -->
     <link rel="stylesheet" href="{{ asset('AdminLTE/plugins/overlayScrollbars/css/OverlayScrollbars.min.css') }}">
-    
+
     <script src="{{ asset('js/app.js') }}" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
@@ -54,7 +54,7 @@
         .nav-sidebar .nav-item > .nav-link {
             color: #495057;
         }
-        .nav-sidebar .nav-item > .nav-link.active, 
+        .nav-sidebar .nav-item > .nav-link.active,
         .nav-sidebar .nav-item > .nav-link:hover {
             background-color: var(--sena-light-green);
             color: var(--sena-dark-green);
