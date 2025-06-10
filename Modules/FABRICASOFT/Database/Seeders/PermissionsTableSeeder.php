@@ -13,13 +13,18 @@ class PermissionsTableSeeder extends Seeder {
         // Obtener aplicación FABRICASOFT
         $app = App::where('name', 'FABRICASOFT')->first();
 
+        if (!$app) {
+            $this->command->error('La aplicación FABRICASOFT no existe. Crea la app primero.');
+            return;
+        }
+
         /** ============================================
          *  PERMISOS PARA ADMINISTRADOR
          *  ============================================ */
         $permissions_admin = [];
 
-        // Acceso al panel de administrador
-        $permissions_admin[] = Permission::updateOrCreate(
+        // Crear permiso
+        $admin_permission = Permission::updateOrCreate(
             ['slug' => 'fabricasoft.admin.welcome'],
             [
                 'name' => 'Acceso al Rol de Administrador',
@@ -27,18 +32,25 @@ class PermissionsTableSeeder extends Seeder {
                 'description_english' => 'Access to the Administrator Role',
                 'app_id' => $app->id,
             ]
-        )->id;
+        );
+
+        $permissions_admin[] = $admin_permission->id;
+
         // Asignar permisos al rol administrador
         $rol_admin = Role::where('slug', 'fabricasoft.admin')->first();
-        $rol_admin->permissions()->syncWithoutDetaching($permissions_admin);
+        if ($rol_admin) {
+            $rol_admin->permissions()->syncWithoutDetaching($permissions_admin);
+        } else {
+            $this->command->warn('Rol fabricasoft.admin no encontrado. Crea el rol antes de ejecutar el seeder.');
+        }
 
         /** ============================================
          *  PERMISOS PARA APRENDIZ
          *  ============================================ */
         $permissions_intern = [];
 
-        // Acceso al panel del pasante
-        $permissions_intern[] = Permission::updateOrCreate(
+        // Crear permiso
+        $intern_permission = Permission::updateOrCreate(
             ['slug' => 'fabricasoft.apprentices'],
             [
                 'name' => 'Acceso al Rol de Aprendiz',
@@ -46,10 +58,18 @@ class PermissionsTableSeeder extends Seeder {
                 'description_english' => 'Access to the Apprentices Role',
                 'app_id' => $app->id,
             ]
-        )->id;
+        );
 
-        // Asignar permisos al rol pasante
+        $permissions_intern[] = $intern_permission->id;
+
+        // Asignar permisos al rol aprendiz
         $rol_intern = Role::where('slug', 'fabricasoft.apprentices')->first();
-        $rol_intern->permissions()->syncWithoutDetaching($permissions_intern);
+        if ($rol_intern) {
+            $rol_intern->permissions()->syncWithoutDetaching($permissions_intern);
+        } else {
+            $this->command->warn('Rol fabricasoft.apprentices no encontrado. Crea el rol antes de ejecutar el seeder.');
+        }
+
+        $this->command->info('Permisos asignados correctamente.');
     }
 }
