@@ -3,7 +3,6 @@
 namespace Modules\FABRICASOFT\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Database\Eloquent\Factory;
 
 class FABRICASOFTServiceProvider extends ServiceProvider
 {
@@ -27,7 +26,43 @@ class FABRICASOFTServiceProvider extends ServiceProvider
         $this->registerTranslations();
         $this->registerConfig();
         $this->registerViews();
+        // $this->registerFactories(); // Comentado temporalmente
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+        
+        // Registrar comandos del módulo
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Modules\FABRICASOFT\Console\Commands\CreateFabricasoftRoles::class,
+                \Modules\FABRICASOFT\Console\Commands\AssignFabricasoftRole::class,
+                \Modules\FABRICASOFT\Console\Commands\ListFabricasoftRoles::class,
+                \Modules\FABRICASOFT\Console\Commands\CreateAnalystUser::class,
+                \Modules\FABRICASOFT\Console\Commands\CheckUsersTable::class,
+                \Modules\FABRICASOFT\Console\Commands\CheckPreregistrations::class,
+                \Modules\FABRICASOFT\Console\Commands\AssignRequestToAnalyst::class,
+                \Modules\FABRICASOFT\Console\Commands\TestCustomRoleMiddleware::class,
+                \Modules\FABRICASOFT\Console\Commands\CheckRouteMiddleware::class,
+                \Modules\FABRICASOFT\Console\Commands\TestAnalystList::class,
+                \Modules\FABRICASOFT\Console\Commands\TestModalFunctionality::class,
+                \Modules\FABRICASOFT\Console\Commands\TestControllerAnalysts::class,
+                \Modules\FABRICASOFT\Console\Commands\CheckAssignedRequests::class,
+                \Modules\FABRICASOFT\Console\Commands\TestAnalystDashboard::class,
+                            \Modules\FABRICASOFT\Console\Commands\CleanupTestRequests::class,
+            \Modules\FABRICASOFT\Console\Commands\ListRemainingRequests::class,
+            \Modules\FABRICASOFT\Console\Commands\TestProjectCreation::class,
+            \Modules\FABRICASOFT\Console\Commands\TestAnalysts::class,
+            \Modules\FABRICASOFT\Console\Commands\CreateTestProject::class,
+            \Modules\FABRICASOFT\Console\Commands\DebugAuth::class,
+            \Modules\FABRICASOFT\Console\Commands\UpdateProjectPhases::class,
+            \Modules\FABRICASOFT\Console\Commands\TestPhaseSave::class,
+            \Modules\FABRICASOFT\Console\Commands\TestPhaseView::class,
+            \Modules\FABRICASOFT\Console\Commands\TestPhaseDates::class,
+            \Modules\FABRICASOFT\Console\Commands\TestPhaseSaveDates::class,
+                                        \Modules\FABRICASOFT\Console\Commands\AssignInternalClientRole::class,
+                            \Modules\FABRICASOFT\Console\Commands\AssignClientRoleToAll::class,
+                            \Modules\FABRICASOFT\Console\Commands\AssignClientRoleSelective::class,
+                \Modules\FABRICASOFT\Console\Commands\TestDownloadSRS::class,
+            ]);
+        }
     }
 
     /**
@@ -88,6 +123,20 @@ class FABRICASOFTServiceProvider extends ServiceProvider
             $this->loadTranslationsFrom(module_path($this->moduleName, 'Resources/lang'), $this->moduleNameLower);
         }
     }
+
+    /**
+     * Register an additional directory for factories.
+     *
+     * @return void
+     */
+    /*
+    public function registerFactories()
+    {
+        if (! app()->environment('production') && $this->app->runningInConsole()) {
+            app(Factory::class)->load(module_path($this->moduleName, 'Database/factories'));
+        }
+    }
+    */
 
     /**
      * Get the services provided by the provider.

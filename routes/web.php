@@ -49,6 +49,15 @@ Route::middleware(['lang'])->group(function(){
             }
     });
 
+    // Logout por GET para evitar errores de tiempo de espera o bucles de redirección
+    // Nota: el logout oficial es POST (Auth::routes), pero algunos enlaces pueden invocar GET
+    Route::get('/logout', function () {
+        Auth::logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+        return redirect('/');
+    })->name('logout.get');
+
     Route::prefix('filemanager')->group(function() {
         \UniSharp\LaravelFilemanager\Lfm::routes();
     });

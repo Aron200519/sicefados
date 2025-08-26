@@ -54,6 +54,27 @@ class User extends Authenticatable implements Auditable
         return $this->belongsToMany(Role::class)->withTimestamps();
     }
 
+    /**
+     * Verificar si el usuario tiene un rol específico
+     * @param string $roleSlug El slug del rol a verificar
+     * @return bool
+     */
+    public function hasRole($roleSlug)
+    {
+        return $this->roles()->where('slug', $roleSlug)->exists();
+    }
+
+    /**
+     * Alias para verificación de rol usado en módulos como FABRICASOFT.
+     * Delegado a hasRole para mantener compatibilidad.
+     * @param string $roleSlug
+     * @return bool
+     */
+    public function hasCustomRole($roleSlug)
+    {
+        return $this->hasRole($roleSlug);
+    }
+
     // CONFIGURACIONES PREESTABLECIDAS PARA MÉTODOS ELOQUENT
     /**
      * The "booting" method of the model.

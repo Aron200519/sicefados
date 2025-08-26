@@ -1,0 +1,2150 @@
+@extends('fabricasoft::layouts.app')
+@section('title', 'Proyecto Scrum - ' . $project->project_name)
+
+@php
+    use \Modules\FABRICASOFT\Entities\PhaseInfoHistory;
+@endphp
+
+@section('content')
+
+<div class="container-fluid">
+    <!-- Header del Proyecto -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-project-diagram me-2"></i>{{ $project->project_name }}
+        </h1>
+        <div>
+            <a href="{{ route('fabricasoft.analyst.projects') }}" class="btn btn-sena me-2">
+                <i class="fas fa-arrow-left me-2"></i>Volver a Proyectos
+            </a>
+        </div>
+    </div>
+
+    <!-- Información del Proyecto -->
+    <div class="row mb-4">
+        <div class="col-xl-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle me-2"></i>Información del Proyecto
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Descripción:</strong></p>
+                            <p class="text-muted">{{ $project->description }}</p>
+                            
+                            @if($project->project_goals)
+                                <p><strong>Metas del Proyecto:</strong></p>
+                                <p class="text-muted">{{ $project->project_goals }}</p>
+                            @endif
+                            
+                            @if($project->success_criteria)
+                                <p><strong>Criterios de Éxito:</strong></p>
+                                <p class="text-muted">{{ $project->success_criteria }}</p>
+                            @endif
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Estado:</strong> 
+                                @if($project->status == 'planning')
+                                    <span class="badge bg-warning">{{ $project->status_text }}</span>
+                                @elseif($project->status == 'active')
+                                    <span class="badge bg-info">{{ $project->status_text }}</span>
+                                @elseif($project->status == 'completed')
+                                    <span class="badge bg-success">{{ $project->status_text }}</span>
+                                @else
+                                    <span class="badge bg-secondary">{{ $project->status_text }}</span>
+                                @endif
+                            </p>
+                            
+                            <p><strong>Scrum Master:</strong> {{ $project->scrumMaster->nickname ?? $project->scrumMaster->name }}</p>
+                            <p><strong>Cliente:</strong> 
+                                @if($project->preregistration)
+                                    {{ $project->preregistration->full_name }}
+                                    @if($project->preregistration->organization)
+                                        ({{ $project->preregistration->organization }})
+                                    @else
+                                        (Organización no disponible)
+                                    @endif
+                                @else
+                                    Cliente no disponible
+                                @endif
+                            </p>
+                            
+                            @if($project->start_date)
+                                <p><strong>Fecha de Inicio:</strong> {{ $project->start_date->format('d/m/Y') }}</p>
+                            @endif
+                            
+                            @if($project->estimated_end_date)
+                                <p><strong>Fecha de Finalización Estimada:</strong> {{ $project->estimated_end_date->format('d/m/Y') }}</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-users me-2"></i>Equipo del Proyecto
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <span class="badge bg-primary fs-6">{{ $project->teamMembers->where('status', 'active')->count() + 1 }} miembros activos</span>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">Scrum Master: 1</small>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">Desarrolladores: {{ $project->developers->count() }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Miembros del Equipo -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-users me-2"></i>Miembros del Equipo
+            </h6>
+            @if(Auth::id() == $project->scrum_master_id || Auth::user()->hasCustomRole('fabricasoft.admin'))
+                <button type="button" class="btn btn-sena btn-sm" onclick="mostrarModalAgregarDesarrollador()">
+                    <i class="fas fa-code me-2"></i>Agregar Desarrollador
+                </button>
+            @endif
+        </div>
+        <div class="card-body">
+            <!-- Scrum Master (Siempre visible) -->
+            <div class="mb-4">
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-crown me-2"></i>Scrum Master
+                </h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card border-left-primary">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-user-tie fa-2x text-primary"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">{{ $project->scrumMaster->nickname ?? 'Sin nombre' }}</h6>
+                                        <p class="mb-1 text-muted">{{ $project->scrumMaster->email }}</p>
+                                        <span class="badge bg-primary">Scrum Master</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Otros Miembros del Equipo -->
+            <div class="mb-4">
+                <h6 class="text-info mb-3">
+                    <i class="fas fa-users me-2"></i>Equipo de Desarrollo
+                </h6>
+                @if($project->teamMembers->where('status', 'active')->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Celular</th>
+                                    <th>Rol</th>
+                                    <th>Responsabilidades</th>
+                                    <th>Fecha de Ingreso</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($project->teamMembers->where('status', 'active') as $member)
+                                <tr>
+                                    <td>{{ $member->user->nickname ?? 'Sin nombre' }}</td>
+                                    <td>{{ $member->user->email }}</td>
+                                    <td>{{ $member->user->phone ?? 'No especificado' }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ $member->role_text }}</span>
+                                    </td>
+                                    <td>{{ $member->responsibilities ?: 'No especificadas' }}</td>
+                                    <td>{{ $member->joined_date->format('d/m/Y') }}</td>
+                                    <td>
+                                        @if(Auth::id() == $project->scrum_master_id || Auth::user()->hasCustomRole('fabricasoft.admin'))
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="removerMiembro({{ $member->id }})">
+                                                <i class="fas fa-user-minus"></i> Remover
+                                            </button>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-gray-300 mb-3"></i>
+                        <h5 class="text-gray-500">No hay desarrolladores en el equipo</h5>
+                        <p class="text-gray-400">Agrega desarrolladores al proyecto para comenzar el desarrollo.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <!-- NUEVAS FASES DEL PROYECTO -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-tasks me-2"></i>Fases del Proyecto
+            </h6>
+        </div>
+        <div class="card-body">
+                         @php
+                 $allPhases = $project->phases->sortBy('order');
+                 $completedPhases = $allPhases->where('status', 'completed');
+                 $currentPhase = $allPhases->where('status', 'in_progress')->first();
+                 
+                 // Si no hay fase en progreso, buscar la siguiente pendiente
+                 if (!$currentPhase) {
+                     $currentPhase = $allPhases->where('status', 'planned')->first();
+                 }
+                 
+                 // Buscar la siguiente fase disponible
+                 $nextPhase = null;
+                 if ($currentPhase && $currentPhase->status === 'completed') {
+                     $nextPhase = $allPhases->where('order', '>', $currentPhase->order)
+                                           ->where('status', 'planned')
+                                           ->first();
+                 }
+                 
+
+             @endphp
+            
+            <!-- FASES ANTERIORES COMPLETADAS (ACORDEÓN) -->
+            @if($completedPhases->count() > 0)
+                <div class="mb-4">
+                    <h6 class="text-muted mb-3">
+                        <i class="fas fa-check-circle me-2"></i>Fases Completadas ({{ $completedPhases->count() }})
+                    </h6>
+
+                    
+                    <div class="accordion" id="accordionCompletedPhases">
+                        @foreach($completedPhases as $index => $completedPhase)
+                        <div class="accordion-item border-left-success">
+                            <h2 class="accordion-header" id="headingCompleted{{ $completedPhase->id }}">
+                                <button class="accordion-button collapsed" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#collapseCompleted{{ $completedPhase->id }}" 
+                                        aria-expanded="false" aria-controls="collapseCompleted{{ $completedPhase->id }}">
+                                    <div class="d-flex align-items-center justify-content-between w-100">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-success me-3">✅ Completada</span>
+                                            <span class="badge bg-secondary me-3">Fase {{ $completedPhase->order }}</span>
+                                            <h6 class="mb-0">{{ $completedPhase->phase_name }}</h6>
+                                        </div>
+                                        <div class="d-flex align-items-center me-3">
+                                            @if($completedPhase->end_date)
+                                                <small class="text-muted">{{ $completedPhase->end_date->format('d/m/Y') }}</small>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseCompleted{{ $completedPhase->id }}" class="accordion-collapse collapse" 
+                                 aria-labelledby="headingCompleted{{ $completedPhase->id }}" data-bs-parent="#accordionCompletedPhases">
+                                <div class="accordion-body">
+                                    @if($completedPhase->order == 1)
+                                        <!-- FASE 1: DEFINICIÓN DE NECESIDADES - Información del Pre-registro -->
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <h6 class="text-success mb-3">
+                                                    <i class="fas fa-user-check me-2"></i>Información del Pre-registro
+                                                </h6>
+                                                
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <strong>Solicitante:</strong>
+                                                            <p class="text-muted mb-0">{{ $project->request->full_name }}</p>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <strong>Email:</strong>
+                                                            <p class="text-muted mb-0">{{ $project->request->email }}</p>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <strong>Teléfono:</strong>
+                                                            <p class="text-muted mb-0">{{ $project->request->phone }}</p>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <strong>Empresa/Organización:</strong>
+                                                            <p class="text-muted mb-0">{{ $project->request->organization }}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <strong>Tipo de Software:</strong>
+                                                            <p class="text-muted mb-0">{{ $project->request->software_type }}</p>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <strong>Descripción del Proyecto:</strong>
+                                                            <p class="text-muted mb-0">{{ $project->request->project_description }}</p>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <strong>Requisitos Adicionales:</strong>
+                                                            <p class="text-muted mb-0">{{ $project->request->additional_requirements }}</p>
+                                                        </div>
+                                                        
+                                                        <div class="mb-3">
+                                                            <strong>Tipo de Cliente:</strong>
+                                                            <p class="text-muted mb-0">{{ ucfirst(str_replace('_', ' ', $project->request->client_type)) }}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card bg-light">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title text-muted">Estado de la Solicitud</h6>
+                                                        <div class="mb-2">
+                                                            <small class="text-muted">Estado:</small>
+                                                            <span class="badge bg-success ms-2">Aprobado</span>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <small class="text-muted">Fecha de Solicitud:</small>
+                                                            <span class="ms-2">{{ $project->request->created_at->format('d/m/Y') }}</span>
+                                                        </div>
+                                                        @if($project->request->reviewed_at)
+                                                        <div class="mb-2">
+                                                            <small class="text-muted">Fecha de Aprobación:</small>
+                                                            <span class="ms-2">{{ $project->request->reviewed_at->format('d/m/Y') }}</span>
+                                                        </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <!-- FASES 2+: Mostrar información de la fase completada -->
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                                    <h6 class="text-success mb-0">
+                                                        <i class="fas fa-check-circle me-2"></i>Información de la Fase
+                                                    </h6>
+                                                    <button type="button" class="btn btn-success btn-sm" onclick="agregarInformacionFase({{ $completedPhase->id }})">
+                                                        <i class="fas fa-plus me-2"></i>Agregar Información
+                                                    </button>
+                                                </div>
+                                                
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-bordered table-hover">
+                                                        <thead class="table-success">
+                                                            <tr>
+                                                                <th>Descripción</th>
+                                                                <th>Notas</th>
+                                                                <th>Enlace</th>
+                                                                <th>Documento</th>
+                                                                <th>Fecha de Creación</th>
+                                                                <th>Comentario Adicional</th>
+                                                                <th>Acciones</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @php
+                                                                $phaseHistory = \Modules\FABRICASOFT\Entities\PhaseInfoHistory::where('phase_id', $completedPhase->id)
+                                                                    ->where('info_type', 'complete_info')
+                                                                    ->orderBy('created_at', 'desc')
+                                                                    ->get();
+                                                            @endphp
+                                                            
+                                                            @if($phaseHistory->count() > 0)
+                                                                @foreach($phaseHistory as $historyItem)
+                                                                    <tr>
+                                                                        <td>{{ $historyItem->description ?: 'No especificada' }}</td>
+                                                                        <td>{{ $historyItem->notes ?: 'No especificadas' }}</td>
+                                                                        <td>
+                                                                            @if($historyItem->external_link)
+                                                                                <a href="{{ $historyItem->external_link }}" target="_blank" class="text-primary">
+                                                                                    <i class="fas fa-external-link-alt me-2"></i>Ver Enlace
+                                                                                </a>
+                                                                            @else
+                                                                                <span class="text-muted">No especificado</span>
+                                                                            @endif
+                                                                        </td>
+                                                                        <td>
+                                                                            @if($historyItem->document_path)
+                                                                                <a href="{{ Storage::url($historyItem->document_path) }}" target="_blank" class="text-primary">
+                                                                                    <i class="fas fa-file-download me-2"></i>Descargar
+                                                                                </a>
+                                                                            @else
+                                                                                <span class="text-muted">No subido</span>
+                                                                            @endif
+                                                                        </td>
+                                                                        <td>{{ $historyItem->start_date ? \Carbon\Carbon::parse($historyItem->start_date)->format('d/m/Y') : 'No especificada' }}</td>
+                                                                        <td>{{ $historyItem->additional_comment ?: 'No especificado' }}</td>
+                                                                        <td>
+                                                                            <div class="btn-group btn-group-sm" role="group">
+                                                                                <button type="button" class="btn btn-warning btn-sm" onclick="editarInformacionFase({{ $historyItem->id }})">
+                                                                                    <i class="fas fa-edit"></i>
+                                                                                </button>
+                                                                                <button type="button" class="btn btn-danger btn-sm" onclick="eliminarInformacionFase({{ $historyItem->id }})">
+                                                                                    <i class="fas fa-trash"></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                @endforeach
+                                                            @else
+                                                                <tr>
+                                                                    <td colspan="7" class="text-center text-muted">
+                                                                        <i class="fas fa-info-circle me-2"></i>No hay información adicional para esta fase
+                                                                    </td>
+                                                                </tr>
+                                                            @endif
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+            
+            @if($currentPhase)
+                                 <!-- FASE ACTUAL -->
+                <div class="card mb-4 border-left-{{ $currentPhase->status === 'completed' ? 'success' : ($currentPhase->status === 'in_progress' ? 'warning' : 'primary') }}">
+                    <div class="card-header bg-{{ $currentPhase->status === 'completed' ? 'success' : ($currentPhase->status === 'in_progress' ? 'warning' : 'primary') }} text-white">
+                        <h6 class="mb-0">
+                            @if($currentPhase->order == 1)
+                                <i class="fas fa-clipboard-list me-2"></i>Fase {{ $currentPhase->order }}: {{ $currentPhase->phase_name }}
+                            @else
+                                <i class="fas fa-tasks me-2"></i>Fase {{ $currentPhase->order }}: {{ $currentPhase->phase_name }}
+                            @endif
+                            
+                            <!-- Estado de la fase actual -->
+                            <span class="badge bg-light text-dark ms-3">
+                                @if($currentPhase->status === 'completed')
+                                    ✅ Completada
+                                @elseif($currentPhase->status === 'in_progress')
+                                    🔄 En Progreso
+                                @else
+                                    ⏳ Pendiente
+                                @endif
+                            </span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <!-- INFORMACIÓN ACTUAL DE LA FASE -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-{{ $currentPhase->order == 1 ? 'clipboard-list' : 'tasks' }} fa-3x text-primary mb-3"></i>
+                            <h4 class="text-primary">{{ $currentPhase->phase_name }}</h4>
+                            <p class="text-muted mb-4">
+                                @if($currentPhase->order == 1)
+                                    Esta fase incluye toda la información del pre-registro del cliente y define las necesidades del proyecto.
+                                @else
+                                    {{ $currentPhase->description ?: 'Fase de desarrollo del proyecto de software.' }}
+                                @endif
+                            </p>
+                            
+                            <!-- ESTADO ACTUAL -->
+                            <div class="mb-4">
+                                @if($currentPhase->status === 'completed')
+                                    <span class="badge bg-success fs-6 px-3 py-2">✅ Fase Completada</span>
+                                @elseif($currentPhase->status === 'in_progress')
+                                    <span class="badge bg-warning fs-6 px-3 py-2">🔄 En Progreso</span>
+                                @else
+                                    <span class="badge bg-primary fs-6 px-3 py-2">⏳ Lista para Iniciar</span>
+                                @endif
+                            </div>
+                            
+                            <!-- BOTONES DE ACCIÓN -->
+                            <div class="d-flex justify-content-center gap-3">
+                                @if($currentPhase->status === 'planned' || $currentPhase->status === 'in_progress')
+                                    <button type="button" class="btn btn-primary btn-lg" onclick="completarFase({{ $currentPhase->id }})">
+                                        <i class="fas fa-check me-2"></i>Completar Fase {{ $currentPhase->order }}
+                                    </button>
+                                @endif
+                                
+                                @if($currentPhase->status === 'completed')
+                                    <button type="button" class="btn btn-outline-primary" onclick="mostrarModalFase({{ $currentPhase->id }})">
+                                        <i class="fas fa-eye me-2"></i>Ver Detalles
+                                    </button>
+                                @endif
+                                
+                                @if($currentPhase->status === 'completed' && $nextPhase)
+                                    <button type="button" class="btn btn-success btn-lg" onclick="avanzarSiguienteFase({{ $nextPhase->id }})">
+                                        <i class="fas fa-arrow-right me-2"></i>Siguiente Fase
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+            
+            <!-- PROGRESO DEL PROYECTO -->
+            <div class="mt-4">
+                <h6 class="text-muted mb-3">Progreso del Proyecto</h6>
+                @php
+                    $completedPhases = $project->phases()->where('status', 'completed')->count();
+                    $totalPhases = $project->phases->count();
+                    $progressPercentage = $totalPhases > 0 ? ($completedPhases / $totalPhases) * 100 : 0;
+                @endphp
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ $progressPercentage }}%" 
+                         aria-valuenow="{{ $progressPercentage }}" aria-valuemin="0" aria-valuemax="100">
+                        {{ round($progressPercentage) }}%
+                    </div>
+                </div>
+                <small class="text-muted">{{ $completedPhases }} de {{ $totalPhases }} fases completadas</small>
+                
+                <!-- LISTA DE TODAS LAS FASES (COLLAPSIBLE) -->
+                <div class="mt-4">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAllPhases" aria-expanded="false">
+                        <i class="fas fa-list me-2"></i>Ver Todas las Fases
+                    </button>
+                    
+                    <div class="collapse mt-3" id="collapseAllPhases">
+                        <div class="card card-body">
+                            <h6 class="text-muted mb-3">Resumen de Todas las Fases</h6>
+                            <div class="row">
+                                @foreach($allPhases as $phase)
+                                <div class="col-md-6 mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-{{ $phase->status === 'completed' ? 'success' : ($phase->status === 'in_progress' ? 'warning' : 'secondary') }} me-2">
+                                            @if($phase->status === 'completed')
+                                                ✅
+                                            @elseif($phase->status === 'in_progress')
+                                                🔄
+                                            @else
+                                                ⏳
+                                            @endif
+                                        </span>
+                                        <span class="me-2">Fase {{ $phase->order }}:</span>
+                                        <strong>{{ $phase->phase_name }}</strong>
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Modal para Fase 2: Análisis y SRS -->
+<div class="modal fade" id="modalFase2" tabindex="-1" aria-labelledby="modalFase2Label" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalFase2Label">
+                    <i class="fas fa-search me-2"></i>Fase 2: Análisis y SRS
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formFase2" action="{{ route('fabricasoft.admin.projects.phase2.save', $project->id) }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Completa la información de la fase de Análisis y SRS. Esta información será fundamental para el desarrollo del proyecto.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fase" class="form-label">Fase *</label>
+                                <input type="text" class="form-control" id="fase" name="fase" value="Análisis y SRS" readonly>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="descripcion" class="form-label">Descripción *</label>
+                                <textarea class="form-control" id="descripcion" name="descripcion" 
+                                          rows="4" placeholder="Describe detalladamente el análisis realizado y los requisitos del sistema..." required></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="notas" class="form-label">Notas</label>
+                                <textarea class="form-control" id="notas" name="notas" 
+                                          rows="3" placeholder="Notas adicionales, observaciones, consideraciones especiales..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="enlace" class="form-label">Enlace</label>
+                                <input type="url" class="form-control" id="enlace" name="enlace" 
+                                       placeholder="https://example.com/documento-srs">
+                                <div class="form-text">Enlace a documentación externa, repositorio, o recursos relacionados.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="documento" class="form-label">Documento</label>
+                                <input type="file" class="form-control" id="documento" name="documento" 
+                                       accept=".pdf,.doc,.docx,.txt">
+                                <div class="form-text">Sube el documento SRS o análisis técnico (PDF, DOC, DOCX, TXT).</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="inicio" class="form-label">Fecha de Inicio *</label>
+                                <input type="date" class="form-control" id="inicio" name="inicio" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="fin" class="form-label">Fecha de Fin *</label>
+                                <input type="date" class="form-control" id="fin" name="fin" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-2"></i>Guardar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="seguirSiguienteFase()">
+                        <i class="fas fa-arrow-right me-2"></i>Seguir a la Siguiente Fase
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar Información a Fase -->
+<div class="modal fade" id="modalAgregarInformacion" tabindex="-1" aria-labelledby="modalAgregarInformacionLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalAgregarInformacionLabel">
+                    <i class="fas fa-plus me-2"></i>Agregar Información a la Fase
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formAgregarInformacion" action="{{ route('fabricasoft.analyst.projects.phase.info.add', ['projectId' => $project->id, 'phaseId' => 1]) }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" id="info_phase_id" name="phase_id">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Agrega nueva información a esta fase.</strong> Cada vez que agregues información se creará una nueva fila en la tabla de la fase.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="info_descripcion" class="form-label">Descripción *</label>
+                                <textarea class="form-control" id="info_descripcion" name="nueva_descripcion" 
+                                          rows="4" placeholder="Describe la nueva información o comentario..." required></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="info_notas" class="form-label">Notas</label>
+                                <textarea class="form-control" id="info_notas" name="nuevas_notas" 
+                                          rows="3" placeholder="Notas adicionales, observaciones..."></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="info_comentario" class="form-label">Comentario Adicional</label>
+                                <textarea class="form-control" id="info_comentario" name="comentario_adicional" 
+                                          rows="2" placeholder="Comentario o contexto adicional..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="info_enlace" class="form-label">Enlace</label>
+                                <input type="url" class="form-control" id="info_enlace" name="nuevo_enlace" 
+                                       placeholder="https://example.com/documento">
+                                <div class="form-text">Enlace a documentación externa o recursos relacionados.</div>
+                            </div>
+                            
+                                                         <div class="mb-3">
+                                 <label for="info_documento" class="form-label">Documento</label>
+                                 <input type="file" class="form-control" id="info_documento" name="nuevo_documento" 
+                                        accept=".pdf,.doc,.docx,.txt">
+                                 <div class="form-text">Sube un documento relacionado (PDF, DOC, DOCX, TXT).</div>
+                             </div>
+                             
+                                                                     <div class="mb-3">
+                                <label for="info_fecha_creacion" class="form-label">Fecha de Creación</label>
+                                <input type="date" class="form-control" id="info_fecha_creacion" name="fecha_creacion" value="{{ date('Y-m-d') }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>Agregar Información
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Completar Fase con Información -->
+<div class="modal fade" id="modalCompletarFase" tabindex="-1" aria-labelledby="modalCompletarFaseLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="modalCompletarFaseLabel">
+                    <i class="fas fa-check-circle me-2"></i>Completar Fase con Información
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formCompletarFase" action="#" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" id="complete_phase_id" name="phase_id">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Estás por completar esta fase.</strong> Agrega la información final de la fase antes de marcarla como completada.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="complete_descripcion" class="form-label">Descripción Final *</label>
+                                <textarea class="form-control" id="complete_descripcion" name="nueva_descripcion" 
+                                          rows="4" placeholder="Describe el resultado final de la fase..." required></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="complete_notas" class="form-label">Notas de Cierre</label>
+                                <textarea class="form-control" id="complete_notas" name="nuevas_notas" 
+                                          rows="3" placeholder="Notas finales, lecciones aprendidas..."></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="complete_comentario" class="form-label">Comentario de Cierre</label>
+                                <textarea class="form-control" id="complete_comentario" name="comentario_adicional" 
+                                          rows="2" placeholder="Comentario final o contexto de cierre..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="complete_enlace" class="form-label">Enlace Final</label>
+                                <input type="url" class="form-control" id="complete_enlace" name="nuevo_enlace" 
+                                       placeholder="https://example.com/documento-final">
+                                <div class="form-text">Enlace a documentación final o entregables de la fase.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="complete_documento" class="form-label">Documento Final</label>
+                                <input type="file" class="form-control" id="complete_documento" name="nuevo_documento" 
+                                       accept=".pdf,.doc,.docx,.txt">
+                                <div class="form-text">Sube el documento final de la fase (PDF, DOC, DOCX, TXT).</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="complete_fecha_creacion" class="form-label">Fecha de Cierre</label>
+                                <input type="date" class="form-control" id="complete_fecha_creacion" name="fecha_creacion" value="{{ date('Y-m-d') }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-check-circle me-2"></i>Completar Fase con Información
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Editar Información de Fase -->
+<div class="modal fade" id="modalEditarInformacion" tabindex="-1" aria-labelledby="modalEditarInformacionLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalEditarInformacionLabel">
+                    <i class="fas fa-edit me-2"></i>Editar Información de la Fase
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarInformacion" action="{{ route('fabricasoft.analyst.projects.phase.info.edit', ['projectId' => $project->id, 'phaseId' => 1, 'infoId' => 'PLACEHOLDER']) }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                <input type="hidden" id="edit_history_id" name="history_id">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Edita la información de esta fase. Los cambios se aplicarán inmediatamente.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_descripcion" class="form-label">Descripción *</label>
+                                <textarea class="form-control" id="edit_descripcion" name="descripcion" 
+                                          rows="4" placeholder="Describe la información de la fase..." required></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="edit_notas" class="form-label">Notas</label>
+                                <textarea class="form-control" id="edit_notas" name="notas" 
+                                          rows="3" placeholder="Notas adicionales, observaciones..."></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="edit_comentario_adicional" class="form-label">Comentario Adicional</label>
+                                <textarea class="form-control" id="edit_comentario_adicional" name="comentario_adicional" 
+                                          rows="2" placeholder="Comentario o contexto adicional..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_enlace" class="form-label">Enlace</label>
+                                <input type="url" class="form-control" id="edit_enlace" name="enlace" 
+                                       placeholder="https://example.com/documento">
+                                <div class="form-text">Enlace a documentación externa o recursos relacionados.</div>
+                            </div>
+                            
+                                        <div class="mb-3">
+                <label for="edit_fecha_creacion" class="form-label">Fecha de Creación</label>
+                <input type="date" class="form-control" id="edit_fecha_creacion" name="fecha_creacion">
+            </div>
+                            
+                            <div class="mb-3">
+                                <label for="edit_documento" class="form-label">Nuevo Documento (opcional)</label>
+                                <input type="file" class="form-control" id="edit_documento" name="documento" 
+                                       accept=".pdf,.doc,.docx,.txt">
+                                <div class="form-text">Sube un nuevo documento para reemplazar el existente.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Genérico para Todas las Fases -->
+<div class="modal fade" id="modalFase" tabindex="-1" aria-labelledby="modalFaseLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalFaseLabel">
+                    <i class="fas fa-edit me-2"></i>Completar Fase
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formFase" action="{{ route('fabricasoft.admin.projects.phase.save', $project->id) }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" id="phase_id" name="phase_id">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Completa la información de esta fase. Esta información será fundamental para el desarrollo del proyecto.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phase_title" class="form-label">Título de la Fase *</label>
+                                <input type="text" class="form-control" id="phase_title" name="phase_title" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="phase_description" class="form-label">Descripción *</label>
+                                <textarea class="form-control" id="phase_description" name="phase_description" 
+                                          rows="4" placeholder="Describe detalladamente el trabajo realizado en esta fase..." required></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="phase_notes" class="form-label">Notas</label>
+                                <textarea class="form-control" id="phase_notes" name="phase_notes" 
+                                          rows="3" placeholder="Notas adicionales, observaciones, consideraciones especiales..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phase_link" class="form-label">Enlace</label>
+                                <input type="url" class="form-control" id="phase_link" name="phase_link" 
+                                       placeholder="https://example.com/documento">
+                                <div class="form-text">Enlace a documentación externa, repositorio, o recursos relacionados.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="phase_document" class="form-label">Documento</label>
+                                <input type="file" class="form-control" id="phase_document" name="phase_document" 
+                                       accept=".pdf,.doc,.docx,.txt">
+                                <div class="form-text">Sube el documento relacionado con esta fase (PDF, DOC, DOCX, TXT).</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="phase_status" class="form-label">Estado de la Fase *</label>
+                                <select class="form-select" id="phase_status" name="phase_status" required>
+                                    <option value="in_progress">En Progreso</option>
+                                    <option value="completed">Completada</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-2"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@endsection
+
+@push('styles')
+<style>
+.border-left-success {
+    border-left: 4px solid #28a745 !important;
+}
+
+.border-left-primary {
+    border-left: 4px solid #0d6efd !important;
+}
+
+.border-left-warning {
+    border-left: 4px solid #ffc107 !important;
+}
+
+.border-left-secondary {
+    border-left: 4px solid #6c757d !important;
+}
+
+.card-header.bg-success {
+    background-color: #28a745 !important;
+}
+
+.card-header.bg-primary {
+    background-color: #0d6efd !important;
+}
+
+.modal-xl {
+    max-width: 1140px;
+}
+
+.progress {
+    border-radius: 0.5rem;
+}
+
+.progress-bar {
+    border-radius: 0.5rem;
+}
+
+/* Estilos del Acordeón */
+.accordion-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.accordion-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+/* Estilos específicos para fases completadas */
+.accordion-item.border-left-success {
+    border-left: 4px solid #28a745 !important;
+}
+
+.accordion-item.border-left-success .accordion-button {
+    background-color: #f8f9fa;
+    color: #155724;
+}
+
+.accordion-item.border-left-success .accordion-button:not(.collapsed) {
+    background-color: #d4edda;
+    color: #155724;
+    box-shadow: none;
+}
+
+.accordion-button {
+    background-color: #f8f9fa;
+    border: none;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    color: #2c3e50;
+    transition: all 0.3s ease;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #e9ecef;
+    color: #2c3e50;
+    box-shadow: none;
+}
+
+.accordion-button:hover {
+    background-color: #e9ecef;
+    color: #2c3e50;
+}
+
+.accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.accordion-body {
+    padding: 1.5rem;
+    background-color: #ffffff;
+}
+
+/* Estilos para los botones en el header del acordeón */
+.accordion-button .btn {
+    margin-left: 0.5rem;
+    white-space: nowrap;
+}
+
+.accordion-button .d-flex {
+    align-items: center;
+}
+
+/* Mejorar la alineación de los elementos del header */
+.accordion-button .d-flex.justify-content-between {
+    width: 100%;
+}
+
+.accordion-button .d-flex.align-items-center {
+    flex: 1;
+}
+
+/* Estilos para los badges */
+.accordion-button .badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    font-weight: 500;
+    margin-right: 0.75rem;
+}
+
+/* Estilos para el título de la fase */
+.accordion-button h6 {
+    margin: 0;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Estilos para los badges y botones */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    font-weight: 500;
+}
+
+.btn-sm {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Estilos para las tarjetas de detalles técnicos */
+.card.bg-light {
+    background-color: #f8f9fa !important;
+    border: 1px solid #dee2e6;
+}
+
+.card.bg-light .card-title {
+    color: #6c757d;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* Estilos para los enlaces */
+.text-primary {
+    color: #0d6efd !important;
+    text-decoration: none;
+}
+
+.text-primary:hover {
+    color: #0a58ca !important;
+    text-decoration: underline;
+}
+
+/* Animaciones */
+.accordion-collapse {
+    transition: all 0.3s ease;
+}
+
+.accordion-button::after {
+    transition: transform 0.3s ease;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .accordion-button {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .accordion-body {
+        padding: 1rem;
+    }
+    
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
+</style>
+@endpush
+
+@push('scripts')
+<script>
+function mostrarModalAgregarDesarrollador() {
+    const modal = new bootstrap.Modal(document.getElementById('modalAgregarDesarrollador'));
+    modal.show();
+}
+
+function mostrarModalFase2() {
+    const modal = new bootstrap.Modal(document.getElementById('modalFase2'));
+    modal.show();
+}
+
+function mostrarModalFase(phaseId) {
+    // Obtener información de la fase
+    fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/${phaseId}/info`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const phase = data.phase;
+                
+                // Llenar el modal con la información de la fase
+                document.getElementById('phase_id').value = phase.id;
+                document.getElementById('phase_title').value = phase.phase_name;
+                document.getElementById('phase_description').value = phase.description || '';
+                document.getElementById('phase_notes').value = phase.notes || '';
+                document.getElementById('phase_link').value = phase.external_link || '';
+                document.getElementById('phase_status').value = phase.status;
+                
+                // Mostrar el modal
+                const modal = new bootstrap.Modal(document.getElementById('modalFase'));
+                modal.show();
+            } else {
+                alert('Error al obtener información de la fase: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al obtener información de la fase.');
+        });
+}
+
+function iniciarFase(phaseId) {
+    if (confirm('¿Estás seguro de que quieres iniciar esta fase?')) {
+        fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/${phaseId}/iniciar`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+            },
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Fase iniciada exitosamente.');
+                location.reload();
+            } else {
+                alert('Error al iniciar la fase: ' + data.message);
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert('Error al iniciar la fase.');
+        });
+    }
+}
+
+function completarFase(phaseId) {
+    console.log('completarFase llamado con phaseId:', phaseId);
+    
+    // Establecer el ID de la fase en el modal
+    document.getElementById('complete_phase_id').value = phaseId;
+    
+    // Mostrar el modal para completar fase con información
+    const modal = new bootstrap.Modal(document.getElementById('modalCompletarFase'));
+    modal.show();
+}
+
+// Función para manejar el envío del formulario de completar fase
+function handleCompletarFaseSubmit(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const phaseId = formData.get('phase_id');
+    
+    console.log('Enviando formulario de completar fase para phaseId:', phaseId);
+    console.log('FormData contents:');
+    for (let [key, value] of formData.entries()) {
+        console.log(key + ': ' + value);
+    }
+    
+    // Validar que la descripción esté presente
+    if (!formData.get('nueva_descripcion').trim()) {
+        alert('La descripción final es obligatoria.');
+        return;
+    }
+    
+    // Enviar formulario
+    fetch(event.target.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Fase completada exitosamente con la información proporcionada.');
+            location.reload();
+        } else {
+            alert('Error al completar la fase: ' + (data.message || 'Error desconocido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error en handleCompletarFaseSubmit:', error);
+        alert('Error al completar la fase.');
+    });
+}
+
+function removerMiembro(memberId) {
+    if (confirm('¿Estás seguro de que quieres remover este miembro del equipo?')) {
+        fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/remover-miembro/${memberId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            },
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        }).catch(error => {
+            console.error('Error en la petición:', error);
+            alert('Error al remover el miembro del equipo.');
+        });
+    }
+}
+
+function seguirSiguienteFase() {
+    if (confirm('¿Estás seguro de que quieres avanzar a la siguiente fase? Esto marcará la Fase 2 como completada.')) {
+        // Aquí puedes implementar la lógica para avanzar a la siguiente fase
+        alert('Función para avanzar a la siguiente fase - Implementar según necesidades');
+    }
+}
+
+function avanzarSiguienteFase(nextPhaseId) {
+    if (confirm('¿Estás seguro de que quieres avanzar a la siguiente fase?')) {
+        // Primero iniciar la fase
+        fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/${nextPhaseId}/iniciar`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+            },
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Siguiente fase iniciada exitosamente. Ahora puedes completarla.');
+                location.reload();
+            } else {
+                alert('Error al iniciar la siguiente fase: ' + data.message);
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert('Error al iniciar la siguiente fase.');
+        });
+    }
+}
+
+function mostrarModalAgregarDesarrollador() {
+    const modal = new bootstrap.Modal(document.getElementById('modalAgregarDesarrollador'));
+    modal.show();
+}
+
+function mostrarModalFase2() {
+    const modal = new bootstrap.Modal(document.getElementById('modalFase2'));
+    modal.show();
+}
+
+function mostrarModalFase(phaseId) {
+    // Obtener información de la fase
+    fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/${phaseId}/info`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const phase = data.phase;
+                
+                // Llenar el modal con la información de la fase
+                document.getElementById('phase_id').value = phase.id;
+                document.getElementById('phase_title').value = phase.phase_name;
+                document.getElementById('phase_description').value = phase.description || '';
+                document.getElementById('phase_id').value = phase.notes || '';
+                document.getElementById('phase_link').value = phase.external_link || '';
+                document.getElementById('phase_status').value = phase.status;
+                
+                // Mostrar el modal
+                const modal = new bootstrap.Modal(document.getElementById('modalFase'));
+                modal.show();
+            } else {
+                alert('Error al obtener información de la fase: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al obtener información de la fase.');
+        });
+}
+
+function iniciarFase(phaseId) {
+    if (confirm('¿Estás seguro de que quieres iniciar esta fase?')) {
+        fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/${phaseId}/iniciar`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+            },
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Fase iniciada exitosamente.');
+                location.reload();
+            } else {
+                alert('Error al iniciar la fase: ' + data.message);
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert('Error al iniciar la fase.');
+        });
+    }
+}
+
+function completarFase(phaseId) {
+    console.log('completarFase llamado con phaseId:', phaseId);
+    
+    // Establecer el ID de la fase en el modal
+    document.getElementById('complete_phase_id').value = phaseId;
+    
+    // Mostrar el modal para completar fase con información
+    const modal = new bootstrap.Modal(document.getElementById('modalCompletarFase'));
+    modal.show();
+}
+
+// Función para manejar el envío del formulario de completar fase
+function handleCompletarFaseSubmit(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const phaseId = formData.get('phase_id');
+    
+    console.log('Enviando formulario de completar fase para phaseId:', phaseId);
+    console.log('FormData contents:');
+    for (let [key, value] of formData.entries()) {
+        console.log(key + ': ' + value);
+    }
+    
+    // Validar que la descripción esté presente
+    if (!formData.get('nueva_descripcion').trim()) {
+        alert('La descripción final es obligatoria.');
+        return;
+    }
+    
+    // Validar que phaseId esté presente
+    if (!phaseId) {
+        alert('Error: No se pudo obtener el ID de la fase. Por favor, inténtalo de nuevo.');
+        return;
+    }
+    
+            const url = `/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/${phaseId}/completar-con-info`;
+    console.log('URL construida:', url);
+    
+    // Enviar la petición
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Fase completada exitosamente con la información proporcionada.');
+            location.reload();
+        } else {
+            alert('Error al completar la fase: ' + (data.message || 'Error desconocido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error en handleCompletarFaseSubmit:', error);
+        alert('Error al completar la fase.');
+    });
+}
+
+function removerMiembro(memberId) {
+    if (confirm('¿Estás seguro de que quieres remover este miembro del equipo?')) {
+        fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/remover-miembro/${memberId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            },
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        }).catch(error => {
+            console.error('Error en la petición:', error);
+            alert('Error al remover el miembro del equipo.');
+        });
+    }
+}
+
+function seguirSiguienteFase() {
+    if (confirm('¿Estás seguro de que quieres avanzar a la siguiente fase? Esto marcará la Fase 2 como completada.')) {
+        // Aquí puedes implementar la lógica para avanzar a la siguiente fase
+        alert('Función para avanzar a la siguiente fase - Implementar según necesidades');
+    }
+}
+
+function avanzarSiguienteFase(nextPhaseId) {
+    if (confirm('¿Estás seguro de que quieres avanzar a la siguiente fase?')) {
+        // Primero iniciar la fase
+        fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/${nextPhaseId}/iniciar`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+            },
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Siguiente fase iniciada exitosamente. Ahora puedes completarla.');
+                location.reload();
+            } else {
+                alert('Error al iniciar la siguiente fase: ' + data.message);
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert('Error al iniciar la siguiente fase.');
+        });
+    }
+}
+
+function agregarInformacionFase(phaseId) {
+    console.log('agregarInformacionFase llamada con phaseId:', phaseId);
+    
+    try {
+        // Verificar que los elementos existen
+        const phaseIdElement = document.getElementById('info_phase_id');
+        const modalElement = document.getElementById('modalAgregarInformacion');
+        
+        if (!phaseIdElement) {
+            console.error('Elemento info_phase_id no encontrado');
+            alert('Error: Campo phase_id no encontrado en el formulario');
+            return;
+        }
+        
+        if (!modalElement) {
+            console.error('Elemento modalAgregarInformacion no encontrado');
+            alert('Error: Modal no encontrado');
+            return;
+        }
+        
+        // Llenar el modal con la información de la fase
+        phaseIdElement.value = phaseId;
+        console.log('Phase ID establecido:', phaseId);
+        
+        // Limpiar campos del formulario si existen
+        const campos = ['info_descripcion', 'info_notas', 'info_comentario', 'info_enlace', 'info_documento'];
+        campos.forEach(campoId => {
+            const elemento = document.getElementById(campoId);
+            if (elemento) {
+                elemento.value = '';
+            } else {
+                console.warn('Campo no encontrado:', campoId);
+            }
+        });
+        
+        // Verificar si Bootstrap está disponible (pero no detener la ejecución)
+        if (typeof bootstrap === 'undefined') {
+            console.warn('Bootstrap no está disponible, usando método alternativo');
+        }
+        
+        // Mostrar el modal
+        console.log('Intentando mostrar modal...');
+        
+        // Método alternativo si Bootstrap no funciona
+        if (typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+            console.log('Modal mostrado con Bootstrap');
+        } else {
+            // Fallback: mostrar modal manualmente
+            modalElement.classList.add('show');
+            modalElement.style.display = 'block';
+            modalElement.setAttribute('aria-hidden', 'false');
+            
+            // Agregar backdrop
+            const backdrop = document.createElement('div');
+            backdrop.classList.add('modal-backdrop', 'fade', 'show');
+            backdrop.id = 'modalBackdrop';
+            document.body.appendChild(backdrop);
+            
+            console.log('Modal mostrado manualmente (fallback)');
+        }
+        
+    } catch (error) {
+        console.error('Error en agregarInformacionFase:', error);
+        alert('Error al abrir el modal: ' + error.message);
+    }
+}
+
+function editarInformacionFase(historyId) {
+    console.log('editarInformacionFase llamada con historyId:', historyId);
+    
+    try {
+        // Obtener la información de la fase para editar
+        fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/1/info/${historyId}/editar`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Llenar el modal de edición con la información existente
+                    document.getElementById('edit_history_id').value = historyId;
+                    document.getElementById('edit_descripcion').value = data.phase.description || '';
+                    document.getElementById('edit_notas').value = data.phase.notes || '';
+                    document.getElementById('edit_enlace').value = data.phase.external_link || '';
+                    document.getElementById('edit_comentario_adicional').value = data.phase.additional_comment || '';
+                    document.getElementById('edit_fecha_creacion').value = data.phase.start_date || '';
+                    
+                    // Actualizar la URL del formulario con el ID correcto
+                    const form = document.getElementById('formEditarInformacion');
+                    const newAction = `/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/1/info/${historyId}/editar`;
+                    form.action = newAction;
+                    
+                    // Mostrar el modal de edición
+                    const modal = new bootstrap.Modal(document.getElementById('modalEditarInformacion'));
+                    modal.show();
+                } else {
+                    alert('Error al obtener información de la fase: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al obtener información de la fase para editar.');
+            });
+    } catch (error) {
+        console.error('Error en editarInformacionFase:', error);
+        alert('Error al abrir el modal de edición: ' + error.message);
+    }
+}
+
+function eliminarInformacionFase(historyId) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta información? Esta acción no se puede deshacer.')) {
+        console.log('eliminarInformacionFase llamada con historyId:', historyId);
+        
+        try {
+            // Enviar solicitud para eliminar el elemento del historial
+            fetch(`/fabricasoft/analyst/proyecto/{{ $project->id }}/fase/1/info/${historyId}/eliminar`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token']').getAttribute('content'),
+                    'Content-Type': 'application/json',
+                },
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Información eliminada exitosamente.');
+                    location.reload();
+                } else {
+                    alert('Error al eliminar la información: ' + data.message);
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('Error al eliminar la información.');
+            });
+        } catch (error) {
+            console.error('Error en eliminarInformacionFase:', error);
+            alert('Error al eliminar la información: ' + error.message);
+        }
+    }
+}
+
+// Función de prueba para debuggear desde la consola
+function testModal() {
+    console.log('=== TEST MODAL ===');
+    console.log('Bootstrap disponible:', typeof bootstrap !== 'undefined');
+    console.log('Modal element:', document.getElementById('modalAgregarInformacion'));
+    console.log('Phase ID element:', document.getElementById('info_phase_id'));
+    
+    // Probar abrir modal
+    agregarInformacionFase(999);
+}
+
+// Hacer las funciones disponibles globalmente para testing
+window.testModal = testModal;
+window.agregarInformacionFase = agregarInformacionFase;
+window.editarInformacionFase = editarInformacionFase;
+window.eliminarInformacionFase = eliminarInformacionFase;
+window.handleCompletarFaseSubmit = handleCompletarFaseSubmit;
+
+// Event listener para el formulario de Fase 2
+document.addEventListener('DOMContentLoaded', function() {
+    const formFase2 = document.getElementById('formFase2');
+    if (formFase2) {
+        formFase2.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                },
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Fase 2 guardada exitosamente.');
+                    bootstrap.Modal.getInstance(document.getElementById('modalFase2')).hide();
+                    location.reload();
+                } else {
+                    alert('Error al guardar la fase: ' + data.message);
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('Error al guardar la fase.');
+            });
+        });
+    }
+    
+    // Event listener para el formulario genérico de fases
+    const formFase = document.getElementById('formFase');
+    if (formFase) {
+        formFase.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                },
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Fase guardada exitosamente.');
+                    bootstrap.Modal.getInstance(document.getElementById('modalFase')).hide();
+                    location.reload();
+                } else {
+                    alert('Error al guardar la fase: ' + data.message);
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('Error al guardar la fase.');
+            });
+        });
+    }
+    
+    // Event listener para el formulario de agregar información
+    const formAgregarInformacion = document.getElementById('formAgregarInformacion');
+    if (formAgregarInformacion) {
+        console.log('Formulario de agregar información encontrado');
+        
+        formAgregarInformacion.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Formulario enviado');
+            
+            const formData = new FormData(this);
+            
+            // Log de los datos del formulario
+            console.log('Datos del formulario:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
+            
+            // Verificar CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfToken) {
+                console.error('CSRF token no encontrado');
+                alert('Error: Token CSRF no encontrado');
+                return;
+            }
+            
+            console.log('Enviando formulario a:', this.action);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
+                },
+            }).then(response => {
+                console.log('Respuesta recibida:', response.status, response.statusText);
+                return response.json();
+            }).then(data => {
+                console.log('Datos de respuesta:', data);
+                
+                if (data.success) {
+                    alert('Información agregada exitosamente a la fase.');
+                    
+                    // Cerrar modal
+                    const modal = document.getElementById('modalAgregarInformacion');
+                    if (modal) {
+                        const bootstrapModal = bootstrap.Modal.getInstance(modal);
+                        if (bootstrapModal) {
+                            bootstrapModal.hide();
+                        }
+                    }
+                    
+                    // Recargar página
+                    location.reload();
+                } else {
+                    alert('Error al agregar información: ' + (data.message || 'Error desconocido'));
+                }
+            }).catch(error => {
+                console.error('Error en fetch:', error);
+                alert('Error al agregar información a la fase: ' + error.message);
+            });
+        });
+    } else {
+        console.error('Formulario de agregar información NO encontrado');
+    }
+    
+    // Event listener para el formulario de editar información
+    const formEditarInformacion = document.getElementById('formEditarInformacion');
+    if (formEditarInformacion) {
+        console.log('Formulario de editar información encontrado');
+        
+        formEditarInformacion.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Formulario de edición enviado');
+            
+            const formData = new FormData(this);
+            
+            // Log de los datos del formulario
+            console.log('Datos del formulario de edición:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
+            
+            // Verificar CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfToken) {
+                console.error('CSRF token no encontrado');
+                alert('Error: Token CSRF no encontrado');
+                return;
+            }
+            
+            console.log('Enviando formulario de edición a:', this.action);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
+                },
+            }).then(response => {
+                console.log('Respuesta de edición recibida:', response.status, response.statusText);
+                return response.json();
+            }).then(data => {
+                console.log('Datos de respuesta de edición:', data);
+                
+                if (data.success) {
+                    alert('Información de la fase actualizada exitosamente.');
+                    
+                    // Cerrar modal
+                    const modal = document.getElementById('modalEditarInformacion');
+                    if (modal) {
+                        const bootstrapModal = bootstrap.Modal.getInstance(modal);
+                        if (bootstrapModal) {
+                            bootstrapModal.hide();
+                        }
+                    }
+                    
+                    // Recargar página
+                    location.reload();
+                } else {
+                    alert('Error al actualizar la información: ' + (data.message || 'Error desconocido'));
+                }
+            }).catch(error => {
+                console.error('Error en fetch de edición:', error);
+                alert('Error al actualizar la información de la fase: ' + error.message);
+            });
+        });
+    } else {
+        console.error('Formulario de editar información NO encontrado');
+    }
+    
+    // Event listener para el formulario de completar fase
+    const formCompletarFase = document.getElementById('formCompletarFase');
+    if (formCompletarFase) {
+        console.log('Formulario de completar fase encontrado');
+        
+        formCompletarFase.addEventListener('submit', handleCompletarFaseSubmit);
+    } else {
+        console.error('Formulario de completar fase NO encontrado');
+    }
+    
+    // Event listener para el formulario de agregar información
+    const formAgregarInformacion = document.getElementById('formAgregarInformacion');
+    if (formAgregarInformacion) {
+        console.log('Formulario de agregar información encontrado');
+        
+        formAgregarInformacion.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Formulario enviado');
+            
+            const formData = new FormData(this);
+            
+            // Log de los datos del formulario
+            console.log('Datos del formulario:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
+            
+            // Verificar CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfToken) {
+                console.error('CSRF token no encontrado');
+                alert('Error: Token CSRF no encontrado');
+                return;
+            }
+            
+            console.log('Enviando formulario a:', this.action);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
+                },
+            }).then(response => {
+                console.log('Respuesta recibida:', response.status, response.statusText);
+                return response.json();
+            }).then(data => {
+                console.log('Datos de respuesta:', data);
+                
+                if (data.success) {
+                    alert('Información agregada exitosamente a la fase.');
+                    
+                    // Cerrar modal
+                    const modal = document.getElementById('modalAgregarInformacion');
+                    if (modal) {
+                        const bootstrapModal = bootstrap.Modal.getInstance(modal);
+                        if (bootstrapModal) {
+                            bootstrapModal.hide();
+                        }
+                    }
+                    
+                    // Recargar página
+                    location.reload();
+                } else {
+                    alert('Error al agregar información: ' + (data.message || 'Error desconocido'));
+                }
+            }).catch(error => {
+                console.error('Error en fetch:', error);
+                alert('Error al agregar información a la fase: ' + error.message);
+            });
+        });
+    } else {
+        console.error('Formulario de agregar información NO encontrado');
+    }
+    
+    // Event listener para el formulario de editar información
+    const formEditarInformacion = document.getElementById('formEditarInformacion');
+    if (formEditarInformacion) {
+        console.log('Formulario de editar información encontrado');
+        
+        formEditarInformacion.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Formulario de edición enviado');
+            
+            const formData = new FormData(this);
+            
+            // Log de los datos del formulario
+            console.log('Datos del formulario de edición:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
+            
+            // Verificar CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (!csrfToken) {
+                console.error('CSRF token no encontrado');
+                alert('Error: Token CSRF no encontrado');
+                return;
+            }
+            
+            console.log('Enviando formulario de edición a:', this.action);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken.getAttribute('content'),
+                },
+            }).then(response => {
+                console.log('Respuesta recibida:', response.status, response.statusText);
+                return response.json();
+            }).then(data => {
+                console.log('Datos de respuesta:', data);
+                
+                if (data.success) {
+                    alert('Información actualizada exitosamente.');
+                    
+                    // Cerrar modal
+                    const modal = document.getElementById('modalEditarInformacion');
+                    if (modal) {
+                        const bootstrapModal = bootstrap.Modal.getInstance(modal);
+                        if (bootstrapModal) {
+                            bootstrapModal.hide();
+                        }
+                    }
+                    
+                    // Recargar página
+                    location.reload();
+                } else {
+                    alert('Error al actualizar información: ' + (data.message || 'Error desconocido'));
+                }
+            }).catch(error => {
+                console.error('Error en fetch:', error);
+                alert('Error al actualizar información: ' + error.message);
+            });
+        });
+    } else {
+        console.error('Formulario de editar información NO encontrado');
+    }
+    
+    // Función de debug para verificar el estado
+    window.debugButtons = function() {
+        console.log('=== DEBUG BOTONES ===');
+        console.log('CSRF Token:', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
+        console.log('Modal Agregar:', document.getElementById('modalAgregarInformacion'));
+        console.log('Modal Editar:', document.getElementById('modalEditarInformacion'));
+        console.log('Form Agregar:', document.getElementById('formAgregarInformacion'));
+        console.log('Form Editar:', document.getElementById('formEditarInformacion'));
+        console.log('Bootstrap disponible:', typeof bootstrap !== 'undefined');
+        
+        // Verificar botones
+        const botonesEditar = document.querySelectorAll('button[onclick*="editarInformacionFase"]');
+        const botonesEliminar = document.querySelectorAll('button[onclick*="eliminarInformacionFase"]');
+        const botonesAgregar = document.querySelectorAll('button[onclick*="agregarInformacionFase"]');
+        
+        console.log('Botones Editar encontrados:', botonesEditar.length);
+        console.log('Botones Eliminar encontrados:', botonesEliminar.length);
+        console.log('Botones Agregar encontrados:', botonesAgregar.length);
+        
+        return {
+            csrf: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+            modals: {
+                agregar: !!document.getElementById('modalAgregarInformacion'),
+                editar: !!document.getElementById('modalEditarInformacion')
+            },
+            forms: {
+                agregar: !!document.getElementById('formAgregarInformacion'),
+                editar: !!document.getElementById('formEditarInformacion')
+            },
+            bootstrap: typeof bootstrap !== 'undefined',
+            botones: {
+                editar: botonesEditar.length,
+                eliminar: botonesEliminar.length,
+                agregar: botonesAgregar.length
+            }
+        };
+    };
+    
+});
+</script>
+
+@push('styles')
+<style>
+/* Estilos personalizados para los botones de acciones - MÁS AGRESIVOS */
+.btn-group .btn-warning,
+.table .btn-group .btn-warning,
+.table td .btn-group .btn-warning,
+.btn-warning.btn-sm,
+.btn-group .btn-warning.btn-sm {
+    background-color: #0d6efd !important;
+    border-color: #0a58ca !important;
+    color: white !important;
+    border-width: 2px !important;
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+.btn-group .btn-warning:hover,
+.table .btn-group .btn-warning:hover,
+.table td .btn-group .btn-warning:hover,
+.btn-warning.btn-sm:hover,
+.btn-group .btn-warning.btn-sm:hover {
+    background-color: #0a58ca !important;
+    border-color: #084298 !important;
+    color: white !important;
+    background-image: none !important;
+}
+
+.btn-group .btn-warning:focus,
+.table .btn-group .btn-warning:focus,
+.table td .btn-group .btn-warning:focus,
+.btn-warning.btn-sm:focus,
+.btn-group .btn-warning.btn-sm:focus {
+    background-color: #0a58ca !important;
+    border-color: #084298 !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+    background-image: none !important;
+}
+
+.btn-group .btn-danger,
+.table .btn-group .btn-danger,
+.table td .btn-group .btn-danger,
+.btn-danger.btn-sm,
+.btn-group .btn-danger.btn-sm {
+    background-color: #dc3545 !important;
+    border-color: #b02a37 !important;
+    color: white !important;
+    border-width: 2px !important;
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+.btn-group .btn-danger:hover,
+.table .btn-group .btn-danger:hover,
+.table td .btn-group .btn-danger:hover,
+.btn-danger.btn-sm:hover,
+.btn-group .btn-danger.btn-sm:hover {
+    background-color: #b02a37 !important;
+    border-color: #8c1d29 !important;
+    color: white !important;
+    background-image: none !important;
+}
+
+.btn-group .btn-danger:focus,
+.table .btn-group .btn-danger:focus,
+.table td .btn-group .btn-danger:focus,
+.btn-danger.btn-sm:focus,
+.btn-group .btn-danger.btn-sm:focus {
+    background-color: #b02a37 !important;
+    border-color: #8c1d29 !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+    background-image: none !important;
+}
+
+/* Estilos específicos para botones dentro de btn-group */
+.btn-group .btn,
+.table .btn-group .btn,
+.table td .btn-group .btn {
+    border-width: 2px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease-in-out !important;
+    margin: 0 2px !important;
+}
+
+.btn-group .btn i,
+.table .btn-group .btn i,
+.table td .btn-group .btn i {
+    color: white !important;
+    font-size: 0.875rem !important;
+}
+
+/* Estilos adicionales para asegurar que los colores se apliquen */
+.table .btn-group .btn-warning,
+.table td .btn-group .btn-warning {
+    background-color: #0d6efd !important;
+    border-color: #0a58ca !important;
+    color: white !important;
+}
+
+.table .btn-group .btn-danger,
+.table td .btn-group .btn-danger {
+    background-color: #dc3545 !important;
+    border-color: #b02a37 !important;
+    color: white !important;
+}
+
+/* Estilos para botones de acciones en la tabla */
+.table td .btn-group .btn {
+    border-width: 2px !important;
+    font-weight: 500 !important;
+}
+
+.table td .btn-group .btn-warning {
+    background-color: #0d6efd !important;
+    border-color: #0a58ca !important;
+    color: white !important;
+}
+
+.table td .btn-group .btn-danger {
+    background-color: #dc3545 !important;
+    border-color: #b02a37 !important;
+    color: white !important;
+}
+
+/* Estilos adicionales para sobrescribir Bootstrap completamente */
+.btn-warning {
+    background-color: #0d6efd !important;
+    border-color: #0a58ca !important;
+    color: white !important;
+}
+
+.btn-danger {
+    background-color: #dc3545 !important;
+    border-color: #b02a37 !important;
+    color: white !important;
+}
+</style>
+@endpush

@@ -1,9 +1,11 @@
 {
     "name": "FABRICASOFT",
     "alias": "fabricasoft",
-    "description": "",
-    "keywords": [],
-    "priority": 0,
+    "description": "Módulo de gestión de proyectos de software para FABRICASOFT",
+    "keywords": ["fabricasoft", "proyectos", "software", "desarrollo"],
+    "version": "1.0.0",
+    "active": 1,
+    "order": 0,
     "providers": [
         "Modules\\FABRICASOFT\\Providers\\FABRICASOFTServiceProvider"
     ],

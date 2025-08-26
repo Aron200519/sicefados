@@ -1,18 +1,30 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| FABRICASOFT Module API Routes
 |--------------------------------------------------------------------------
 |
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
+| Aquí se definen las rutas API del módulo FABRICASOFT
 |
 */
 
-Route::middleware('auth:api')->get('/fabricasoft', function (Request $request) {
-    return $request->user();
+Route::prefix('fabricasoft')->group(function () {
+    
+    // Rutas que requieren autenticación
+    Route::middleware(['auth:sanctum'])->group(function () {
+        
+        // Ruta para obtener información del usuario autenticado
+        Route::get('/user', function (Request $request) {
+            return $request->user();
+        });
+        
+        // Aquí se pueden agregar más rutas API según sea necesario
+        // Route::get('/proyectos', [ProyectoController::class, 'index']);
+        // Route::post('/proyectos', [ProyectoController::class, 'store']);
+        
+    });
 });
